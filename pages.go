@@ -91,11 +91,27 @@ func createPagesProject(
 	ctx context.Context,
 	name string,
 	kv *kv.Namespace,
+	legacy LegacyWorkerConfig,
 ) (
 	*pages.Project,
 	error,
 ) {
 	envVars := map[string]pages.ProjectDeploymentConfigsProductionEnvVarsUnionParam{}
+
+	if legacy.Enabled {
+		envVars["UUID"] = pages.ProjectDeploymentConfigsProductionEnvVarsPagesPlainTextEnvVarParam{Type: cf.F(pages.ProjectDeploymentConfigsProductionEnvVarsPagesPlainTextEnvVarTypePlainText), Value: cf.F(legacy.UID)}
+		envVars["TR_PASS"] = pages.ProjectDeploymentConfigsProductionEnvVarsPagesPlainTextEnvVarParam{Type: cf.F(pages.ProjectDeploymentConfigsProductionEnvVarsPagesPlainTextEnvVarTypePlainText), Value: cf.F(legacy.Pass)}
+		envVars["SUB_PATH"] = pages.ProjectDeploymentConfigsProductionEnvVarsPagesPlainTextEnvVarParam{Type: cf.F(pages.ProjectDeploymentConfigsProductionEnvVarsPagesPlainTextEnvVarTypePlainText), Value: cf.F(legacy.SubPath)}
+		if legacy.Proxy != "" {
+			envVars["PROXY_IP"] = pages.ProjectDeploymentConfigsProductionEnvVarsPagesPlainTextEnvVarParam{Type: cf.F(pages.ProjectDeploymentConfigsProductionEnvVarsPagesPlainTextEnvVarTypePlainText), Value: cf.F(legacy.Proxy)}
+		}
+		if legacy.Nat64Prefix != "" {
+			envVars["PREFIX"] = pages.ProjectDeploymentConfigsProductionEnvVarsPagesPlainTextEnvVarParam{Type: cf.F(pages.ProjectDeploymentConfigsProductionEnvVarsPagesPlainTextEnvVarTypePlainText), Value: cf.F(legacy.Nat64Prefix)}
+		}
+		if legacy.Fallback != "" {
+			envVars["FALLBACK"] = pages.ProjectDeploymentConfigsProductionEnvVarsPagesPlainTextEnvVarParam{Type: cf.F(pages.ProjectDeploymentConfigsProductionEnvVarsPagesPlainTextEnvVarTypePlainText), Value: cf.F(legacy.Fallback)}
+		}
+	}
 
 	project, err := cfClient.Pages.Projects.New(
 		ctx,
@@ -322,6 +338,7 @@ func deployPagesProject(
 	name string,
 	kvNamespace *kv.Namespace,
 	customDomain string,
+	legacy LegacyWorkerConfig,
 ) (
 	panelURL string,
 	er error,
@@ -332,7 +349,7 @@ func deployPagesProject(
 	for {
 		fmt.Printf("\n%s Creating Pages project...\n", title)
 
-		project, err = createPagesProject(ctx, name, kvNamespace)
+		project, err = createPagesProject(ctx, name, kvNamespace, legacy)
 		if err != nil {
 			failMessage("Failed to create project.")
 			log.Printf("%v\n\n", err)
@@ -377,10 +394,16 @@ func deployPagesProject(
 
 			successMessage("Custom domain added to pages successfully!")
 			fmt.Printf("%s %s: You should create a CNAME record with Name: %s and Target: %s, Otherwise your Custom Domain will not work.\n", info, warning, fmtStr(recordName, GREEN, true), fmtStr(name+".pages.dev", GREEN, true))
+			if legacy.Enabled {
+				return "https://" + customDomain + "/panel", nil
+			}
 			return "https://" + customDomain, nil
 		}
 	}
 
 	successMessage("It takes up to 5 minutes to access panel, please wait...")
+	if legacy.Enabled {
+		return "https://" + project.Subdomain + "/panel", nil
+	}
 	return "https://" + project.Subdomain, nil
 }
