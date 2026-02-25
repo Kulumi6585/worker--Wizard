@@ -404,7 +404,7 @@ func createPanel() {
 		deployType = DTPage
 	}
 
-	workerSourceURL, workerSourceName := selectWorkerSource()
+	workerSourceURL, workerSourceName := selectWorkerSource(deployType)
 	fmt.Printf("\n%s Worker source selected: %s (%s)\n", info, fmtStr(workerSourceName, GREEN, true), fmtStr(workerSourceURL, ORANGE, true))
 
 	var projectName string
@@ -490,7 +490,25 @@ func createPanel() {
 	}
 }
 
-func selectWorkerSource() (url string, name string) {
+func selectWorkerSource(deployType DeployType) (url string, name string) {
+	if deployType == DTPage {
+		fmt.Printf("\n%s Pages mode selected. Please enter your worker source URL.\n", info)
+		for {
+			customURL := promptUser("- Enter the raw URL of your worker file: ", nil)
+			if customURL == "" {
+				failMessage("Worker URL cannot be empty.")
+				continue
+			}
+
+			if _, err := http.NewRequest(http.MethodGet, customURL, nil); err != nil {
+				failMessage("Invalid URL format. Please try again.")
+				continue
+			}
+
+			return customURL, "Custom"
+		}
+	}
+
 	fmt.Printf("\n%s Select worker source file:\n", title)
 	for i, sourceURL := range defaultWorkerURLs {
 		fmt.Printf("%d- %s\n", i+1, sourceURL)
@@ -603,7 +621,11 @@ func modifyPanel() {
 			switch response {
 			case "1":
 
-				workerSourceURL, workerSourceName := selectWorkerSource()
+				selectedDeployType := DTPage
+				if panelType == "workers" {
+					selectedDeployType = DTWorker
+				}
+				workerSourceURL, workerSourceName := selectWorkerSource(selectedDeployType)
 				fmt.Printf("\n%s Worker source selected for update: %s (%s)\n", info, fmtStr(workerSourceName, GREEN, true), fmtStr(workerSourceURL, ORANGE, true))
 				if err := downloadWorker(workerSourceURL); err != nil {
 					failMessage("Failed to download worker source file")
