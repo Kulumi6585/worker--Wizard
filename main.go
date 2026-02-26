@@ -38,8 +38,8 @@ var (
 			URL:  "https://raw.githubusercontent.com/10ium/free-config/main/worker/ClashFa_Mirror_Pro.txt",
 		},
 		{
-			Name: "great_mihomo_converter_v2+ui",
-			URL:  "https://raw.githubusercontent.com/10ium/free-config/main/worker/great_mihomo_converter_v2%2Bui.txt",
+			Name: "great_mihomo_converter",
+			URL:  "https://raw.githubusercontent.com/10ium/free-config/refs/heads/main/worker/great_mihomo_converter",
 		},
 		{
 			Name: "iran_proxy",
