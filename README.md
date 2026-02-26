@@ -50,7 +50,7 @@
 
 ### Windows / macOS
 
-آخرین نسخه را از بخش Release همین مخزن دانلود و اجرا کنید.
+آخرین نسخه را از بخش (Release)[https://github.com/10ium/worker--Wizard/releases] همین مخزن دانلود و اجرا کنید.
 
 ### Linux / Android (Termux)
 
