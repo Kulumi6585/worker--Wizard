@@ -55,7 +55,9 @@ type LegacyWorkerConfig struct {
 
 type WorkerBindingConfig struct {
 	KVNamespaces map[string]*kv.Namespace
+	KVValues     map[string]map[string]string
 	PlainVars    map[string]string
+	SecretVars   map[string]string
 }
 
 const (
@@ -655,7 +657,9 @@ func createKVNamespaceWithRetry(ctx context.Context, bindingName string) *kv.Nam
 func collectWorkerBindings(ctx context.Context, source WorkerSource) WorkerBindingConfig {
 	config := WorkerBindingConfig{
 		KVNamespaces: map[string]*kv.Namespace{},
+		KVValues:     map[string]map[string]string{},
 		PlainVars:    map[string]string{},
+		SecretVars:   map[string]string{},
 	}
 
 	kvBindings := append([]string{}, source.KVBindings...)
@@ -672,6 +676,24 @@ func collectWorkerBindings(ctx context.Context, source WorkerSource) WorkerBindi
 					continue
 				}
 				kvBindings = append(kvBindings, name)
+				kvValueCount := promptNonNegativeInt(fmt.Sprintf("- How many key/value pairs for KV %s? (0 or ENTER to skip): ", name))
+				if kvValueCount > 0 {
+					if _, ok := config.KVValues[name]; !ok {
+						config.KVValues[name] = map[string]string{}
+					}
+					for j := 0; j < kvValueCount; j++ {
+						for {
+							key := strings.TrimSpace(promptUser(fmt.Sprintf("- Enter key #%d for KV %s: ", j+1, name), nil))
+							if key == "" {
+								failMessage("KV key cannot be empty.")
+								continue
+							}
+							value := promptUser(fmt.Sprintf("- Enter value for key %s (press ENTER for empty): ", key), nil)
+							config.KVValues[name][key] = value
+							break
+						}
+					}
+				}
 				break
 			}
 		}
@@ -679,13 +701,18 @@ func collectWorkerBindings(ctx context.Context, source WorkerSource) WorkerBindi
 		varCount := promptNonNegativeInt("- How many variables does this worker need? (0 or ENTER to skip): ")
 		for i := 0; i < varCount; i++ {
 			for {
+				secretAns := strings.ToLower(strings.TrimSpace(promptUser(fmt.Sprintf("- Should variable #%d be secret? (y/n): ", i+1), []string{"y", "n"})))
 				name := strings.TrimSpace(promptUser(fmt.Sprintf("- Enter variable name #%d: ", i+1), nil))
 				if name == "" {
 					failMessage("Variable name cannot be empty.")
 					continue
 				}
 				value := promptUser(fmt.Sprintf("- Enter value for %s (press ENTER for empty): ", name), nil)
-				config.PlainVars[name] = value
+				if secretAns == "y" {
+					config.SecretVars[name] = value
+				} else {
+					config.PlainVars[name] = value
+				}
 				break
 			}
 		}
@@ -697,6 +724,14 @@ func collectWorkerBindings(ctx context.Context, source WorkerSource) WorkerBindi
 			continue
 		}
 		config.KVNamespaces[kvBinding] = ns
+
+		if values, ok := config.KVValues[kvBinding]; ok {
+			for key, value := range values {
+				if err := upsertKVValueWithRetry(ctx, ns, key, value); err != nil {
+					log.Printf("failed to set KV value for binding %s key %s: %v", kvBinding, key, err)
+				}
+			}
+		}
 	}
 
 	for _, prompt := range varPrompts {
@@ -706,7 +741,11 @@ func collectWorkerBindings(ctx context.Context, source WorkerSource) WorkerBindi
 				failMessage(fmt.Sprintf("%s cannot be empty.", prompt.Name))
 				continue
 			}
-			config.PlainVars[prompt.Name] = value
+			if prompt.IsSecret {
+				config.SecretVars[prompt.Name] = value
+			} else {
+				config.PlainVars[prompt.Name] = value
+			}
 			break
 		}
 	}

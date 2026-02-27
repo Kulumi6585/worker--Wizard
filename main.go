@@ -21,8 +21,9 @@ type WorkerSource struct {
 }
 
 type EnvVarPrompt struct {
-	Name   string
-	Prompt string
+	Name     string
+	Prompt   string
+	IsSecret bool
 }
 
 var (
@@ -59,8 +60,8 @@ var (
 			URL:        "https://raw.githubusercontent.com/10ium/free-config/refs/heads/main/worker/TG-Proxy_Assistant",
 			KVBindings: []string{"PROXY_KV"},
 			VarPrompts: []EnvVarPrompt{
-				{Name: "BOT_TOKEN", Prompt: "- Please enter your Telegram bot token (created by BotFather): "},
-				{Name: "ADMIN_PASSWORD", Prompt: "- Please set an admin password: "},
+				{Name: "BOT_TOKEN", Prompt: "- Please enter your Telegram bot token (created by BotFather): ", IsSecret: true},
+				{Name: "ADMIN_PASSWORD", Prompt: "- Please set an admin password: ", IsSecret: true},
 			},
 		},
 	}

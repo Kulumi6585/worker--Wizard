@@ -106,6 +106,10 @@ func createPagesProject(
 		envVars[name] = pages.ProjectDeploymentConfigsProductionEnvVarsPagesPlainTextEnvVarParam{Type: cf.F(pages.ProjectDeploymentConfigsProductionEnvVarsPagesPlainTextEnvVarTypePlainText), Value: cf.F(value)}
 	}
 
+	for name, value := range bindingConfig.SecretVars {
+		envVars[name] = pages.ProjectDeploymentConfigsProductionEnvVarsPagesSecretTextEnvVarParam{Type: cf.F(pages.ProjectDeploymentConfigsProductionEnvVarsPagesSecretTextEnvVarTypeSecretText), Value: cf.F(value)}
+	}
+
 	if legacy.Enabled {
 		envVars["UUID"] = pages.ProjectDeploymentConfigsProductionEnvVarsPagesPlainTextEnvVarParam{Type: cf.F(pages.ProjectDeploymentConfigsProductionEnvVarsPagesPlainTextEnvVarTypePlainText), Value: cf.F(legacy.UID)}
 		envVars["TR_PASS"] = pages.ProjectDeploymentConfigsProductionEnvVarsPagesPlainTextEnvVarParam{Type: cf.F(pages.ProjectDeploymentConfigsProductionEnvVarsPagesPlainTextEnvVarTypePlainText), Value: cf.F(legacy.Pass)}
