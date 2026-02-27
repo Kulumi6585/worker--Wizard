@@ -133,14 +133,19 @@ func (sp ScriptUpdateParams) MarshalMultipart() ([]byte, string, error) {
 	return body.Bytes(), writer.FormDataContentType(), nil
 }
 
-func createWorker(ctx context.Context, name string, kv *kv.Namespace, legacy LegacyWorkerConfig) (*workers.ScriptUpdateResponse, error) {
+func createWorker(ctx context.Context, name string, bindingConfig WorkerBindingConfig, legacy LegacyWorkerConfig) (*workers.ScriptUpdateResponse, error) {
 
-	envVars := []map[string]string{
-		{
-			"name":         "kv",
-			"namespace_id": kv.ID,
+	envVars := []map[string]string{}
+	for bindingName, namespace := range bindingConfig.KVNamespaces {
+		envVars = append(envVars, map[string]string{
+			"name":         bindingName,
+			"namespace_id": namespace.ID,
 			"type":         "kv_namespace",
-		},
+		})
+	}
+
+	for name, value := range bindingConfig.PlainVars {
+		envVars = append(envVars, map[string]string{"name": name, "text": value, "type": "plain_text"})
 	}
 
 	if legacy.Enabled {
@@ -330,7 +335,7 @@ func updateWorker(ctx context.Context, name string) error {
 func deployWorker(
 	ctx context.Context,
 	name string,
-	kvNamespace *kv.Namespace,
+	bindingConfig WorkerBindingConfig,
 	customDomain string,
 	legacy LegacyWorkerConfig,
 ) (
@@ -340,7 +345,7 @@ func deployWorker(
 	for {
 		fmt.Printf("\n%s Creating Worker...\n", title)
 
-		_, err := createWorker(ctx, name, kvNamespace, legacy)
+		_, err := createWorker(ctx, name, bindingConfig, legacy)
 		if err != nil {
 			failMessage("Failed to deploy worker.")
 			log.Printf("%v\n\n", err)
